@@ -1,9 +1,13 @@
 from telebot import TeleBot
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-from weather_config import TOKEN
+from flask import Flask, request, abort
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, Update
+from weather_config import TOKEN, WEBHOOK_PATH, WEBHOOK_URL
 from weather_models import Gallary
 import random
 import requests
+import time
+
+app = Flask(__name__)
 
 api_url = "http://api.openweathermap.org/data/2.5/weather"
 params = {'q': None, "appid": "11c0d3dc6093f7442898ee49d2430d20", 'units': 'metric'}
@@ -22,19 +26,19 @@ def hello(message):
 
 @bot.message_handler(content_types = ['text'])
 def weather(message):
-    params['q'] = message.text.strip()
+    params ['q'] = message.text.strip()
     res = requests.get(api_url, params = params)
     data = res.json()
     try:
-        if data['clouds']['all'] < 40 :
+        if data ['clouds'] ['all'] < 40:
             image = Gallary.get_weather_img('Sunny_weather.jpg')
             res = image.image.read()
             bot.send_photo(chat_id = message.chat.id, photo = res)
-        elif data['clouds']['all'] >=40 and data['clouds']['all'] <= 70 :
-            image =Gallary.get_weather_img('partial_clouds.jpg')
+        elif data ['clouds'] ['all'] >= 40 and data ['clouds'] ['all'] <= 70:
+            image = Gallary.get_weather_img('partial_clouds.jpg')
             res = image.image.read()
             bot.send_photo(chat_id = message.chat.id, photo = res)
-        elif data['clouds']['all'] >70:
+        elif data ['clouds'] ['all'] > 70:
             choices = ['Thunder_clouds.jpeg', 'Thunder_storm.jpg']
             image = Gallary.get_weather_img(random.choice(choices))
             res = image.image.read()
@@ -51,4 +55,21 @@ def weather(message):
                                           'Come again ?')
 
 
-bot.polling()
+@app.route(WEBHOOK_PATH, methods = ['GET', 'POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return ''
+    else:
+        abort(403)
+
+
+if __name__ == "__main__":
+    # start_bot()
+    bot.remove_webhook()
+    time.sleep(1)
+    bot.set_webhook(WEBHOOK_URL, certificate = open('webhook_weather_cert.pem', 'r'))
+    app.run(debug = True)
+    # bot.polling()
