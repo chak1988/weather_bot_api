@@ -1,0 +1,12 @@
+version: '3.0'
+
+services:
+    weather_bot:
+        build: .
+        depends_on:
+            - nginx
+
+    nginx:
+        image: nginx
+        volumes:
+            - ./default:/etc/nginx/sites-available/default
